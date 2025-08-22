@@ -1,0 +1,17 @@
+*.o
+*.out
+a.out
+hello
+employee
+logwriter
+
+*.log
+
+*.swp
+*~
+*.bak
+
+.DS_Store
+Thumbs.db
+
+
