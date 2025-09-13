@@ -3,6 +3,10 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
+void func(int signum) {
+   wait(NULL);
+}
+
 int main() {
    int i;
    int pid = fork();
@@ -12,6 +16,7 @@ int main() {
          printf("I am a Child\n");
    }
    else {
+      signal(SIGCHLD, func);
       printf("I am Parent\n");
       while(1);
    }
