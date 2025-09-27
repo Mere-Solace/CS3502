@@ -12,14 +12,14 @@ int main() {
    int pipe2[2]; // Child to parent 
    pid_t pid;
 
-   // TODO: Create both pipes
+   // Create both pipes
    // if (pipe(pipe1) ==-1) { /* error handling */ }
    if (pipe(pipe1) == -1 || pipe(pipe2) == -1) {
       perror("pipe");
       exit(EXIT_FAILURE);
    }
 
-   // TODO: Fork process
+   // Fork process
    pid = fork();
    if (pid == -1) {
       perror("fork");
@@ -28,7 +28,7 @@ int main() {
 
    if (pid == 0) {
       // Child process
-      // TODO: Close unused pipe ends
+      // Close unused pipe ends
       close(pipe1[1]); // Close write end of pipe1
       close(pipe2[0]); // Close read end of pipe2
 
@@ -37,7 +37,7 @@ int main() {
       
       time(&now);
       local = localtime(&now);
-      // TODO: Read from parent, send responses
+      // Read from parent, send responses
    
       char buffer[1024];
       read(pipe1[0], buffer, 1024);
@@ -55,12 +55,12 @@ int main() {
       exit(0);
    } else {
       // Parent process
-      // TODO: Close unused pipe ends
+      // Close unused pipe ends
       close(pipe1[0]); // Close read end of pipe1
       close(pipe2[1]); // Close write end of pipe2
       
-      // TODO: Send messages, read responses
-      // TODO: wait() for child
+      // Send messages, read responses
+      // wait() for child
       
       printf("You are the Parent. Send a message to your Child:\n");
       char message[max_message];
