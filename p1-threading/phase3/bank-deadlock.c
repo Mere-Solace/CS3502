@@ -5,8 +5,8 @@
 #include <sys/time.h>
 
 #define NUM_ACCOUNTS 5
-#define TRANSACTIONS_PER_TELLER 10
-#define NUM_THREADS 10
+#define TRANSACTIONS_PER_TELLER 100
+#define NUM_THREADS 100
 #define MAX_TRANSACTION_AMOUNT 1000
 #define STARTING_AMOUNT 2000
 #define VERBOSE 1
@@ -134,7 +134,7 @@ void *teller_thread(void *arg) {
       teller_log[teller_id][source_acct_num] -= type*amount; // save amount in teller-specific data struct
       teller_log[teller_id][dest_acct_num] += type*amount;
 
-      printf("|> Teller [ %d ] t#{ %d }\t Source [ %d ] -($%.2f) --> Dest [ %d ] +($%.2f)\n", 
+      printf("|> Teller [ %d ] t#{ %d } ||| Source [ %d ] -($%.2f) --> Dest [ %d ] +($%.2f)\n", 
          teller_id,
          i,
          source_acct_num,
@@ -184,8 +184,8 @@ int main() {
    for (int i = 0; i < NUM_ACCOUNTS; i++) {
       total += accounts[i].balance;
    }
-   printf("  Starting Amount: $%d, Actual: $%.2f\n\n   | %s |\n\n", STARTING_AMOUNT, total/NUM_ACCOUNTS, STARTING_AMOUNT == (int)(total/NUM_ACCOUNTS) ? "VALID" : "INVALID");
 
+   printf("  Starting Amount: $%d, Final Average: $%.0f\n\n", STARTING_AMOUNT, total/NUM_ACCOUNTS);
    printf("\nThis run (MUTEX Implemented) took: %.6f\n\n", cpu_time);
 
    for (int i = 0; i < NUM_THREADS; i++) {

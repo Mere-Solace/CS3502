@@ -7,7 +7,7 @@
 #define NUM_ACCOUNTS 1
 #define TRANSACTIONS_PER_TELLER 1000
 #define NUM_THREADS 1000
-#define TEST_TRANSACTION_AMOUNT 1.00
+#define TEST_TRANSACTION_AMOUNT 1
 
 typedef struct Record {
    int type;               // 1 for deposit, -1 for withdrawal
