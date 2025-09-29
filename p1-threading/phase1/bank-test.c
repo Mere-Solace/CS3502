@@ -3,11 +3,14 @@
 #include <pthread.h>
 #include <time.h>
 #include <sys/time.h>
+#include <getopt.h>
 
 #define NUM_ACCOUNTS 1
 #define TRANSACTIONS_PER_TELLER 1000
 #define NUM_THREADS 1000
 #define TEST_TRANSACTION_AMOUNT 1
+
+int verbose = 0;
 
 typedef struct Record {
    int type;               // 1 for deposit, -1 for withdrawal
@@ -59,7 +62,7 @@ void printRecord(Account *acc) {
       localtime_r(&cur->tot, &local);
       strftime(buffer, sizeof(buffer), "%H:%M:%S", &local);
 
-      if (cur->type != 0) {
+      if (cur->type != 0 && verbose) {
          printf("[%s.%06ld] Transaction %d:\n| >> Type: %s | Amount: $%.2f\n|\n", 
                buffer, 
                cur->micro.tv_usec,
@@ -73,8 +76,20 @@ void printRecord(Account *acc) {
       x++;
    }
 
-   printf("\n    {~   Transaction Summary | Account: %d   ~}\n\n", acc->account_id);
-   printf(" - Current Balance: $%.2f\n - Net change in balance: $%.2f\n\n", acc->balance, curDel);
+   printf("\n > [ Transaction Summary - Account: %d ]\n", acc->account_id);
+   printf("   | Current Balance:....$%.2f\n   | Net Change:.........$%.2f\n", acc->balance, curDel);  
+}
+
+void freeRecord(Account *acc) {
+   Record *gc = acc->sot; // garbage collector
+   Record *cur = acc->sot->next;
+   int x = 0;
+   while(cur != NULL) {
+      free(gc);
+      gc = cur;
+      cur = cur->next;
+      // printf("Freed record %d\n", ++x);
+   }
 }
 
 Account accounts[NUM_ACCOUNTS];
@@ -90,7 +105,16 @@ void *teller_thread(void *arg) {
 pthread_t threads[NUM_THREADS];
 int thread_ids[NUM_THREADS];
 
-int main() {
+int main(int argc, char *argv[]) {
+   char opt;
+   while ((opt = getopt(argc, argv, "vh")) != -1) {
+      switch (opt) {
+         case 'v': {
+            verbose = 1;
+         }
+      }
+   }
+
    accounts[0] = createAccount(0, 0.0);
 
    for (int i = 0; i < NUM_THREADS; i++) {
@@ -103,6 +127,12 @@ int main() {
    }
 
    printRecord(&accounts[0]);
-   printf("Net Change in balance should be: $%.2f\n\n", NUM_THREADS*TRANSACTIONS_PER_TELLER*TEST_TRANSACTION_AMOUNT);
+   printf("   |> Correct Value:.....$%.2f\n\n\n", NUM_THREADS*TRANSACTIONS_PER_TELLER*TEST_TRANSACTION_AMOUNT*1.00);
+
+   for (int i = 0; i < NUM_ACCOUNTS; i++) {
+      freeRecord(&accounts[i]);
+   }
+
+   printf("\nNumber of Accounts: %d\nNumber of Tellers: %d\nNumber of Transactions Per Teller: %d\n\n", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
 }
 
