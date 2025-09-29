@@ -63,7 +63,7 @@ void printRecord(Account *acc) {
       strftime(buffer, sizeof(buffer), "%H:%M:%S", &local);
 
       if (cur->type != 0 && verbose) {
-         printf("[%s.%06ld] Transaction %d:\n| >> Type: %s | Amount: $%.2f\n|\n", 
+         printf("[%s.%06ld] Transaction %d:\n| >> Type: %s | Amount: $%.2f\n", 
                buffer, 
                cur->micro.tv_usec,
                x, 
@@ -133,6 +133,7 @@ int main(int argc, char *argv[]) {
       freeRecord(&accounts[i]);
    }
 
-   printf("\nNumber of Accounts: %d\nNumber of Tellers: %d\nNumber of Transactions Per Teller: %d\n\n", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
+   printf("Number of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
+   printf("\nAmount per Transaction:.....$%.2f\n\n", TEST_TRANSACTION_AMOUNT*1.00);
 }
 

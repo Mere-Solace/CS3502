@@ -8,9 +8,9 @@
 #include <unistd.h>
 #include <string.h>
 
-#define NUM_ACCOUNTS 10
-#define TRANSACTIONS_PER_TELLER 100000
-#define NUM_THREADS 128
+#define NUM_ACCOUNTS 100
+#define TRANSACTIONS_PER_TELLER 1000000
+#define NUM_THREADS 32
 #define MAX_TRANSACTION_AMOUNT 500000  // $5000.00 in cents
 #define STARTING_AMOUNT 200000         // $2000.00 in cents
 #define CACHELINE 64
@@ -227,11 +227,21 @@ int thread_ids[NUM_THREADS];
 
 int main(int argc, char *argv[]) {
    char opt;
-   while ((opt = getopt(argc, argv, "vh")) != -1) {
+   while ((opt = getopt(argc, argv, "cvh")) != -1) {
       switch (opt) {
-         case 'v': {
+         case 'v':
             verbose = 1;
-         }
+         case 'c':
+            printf("\nCurrently compiled with:\n");
+            printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
+            printf("\nMax Transaction Amount:.....$%.2f\n\n", MAX_TRANSACTION_AMOUNT/100.00);
+            exit(EXIT_SUCCESS);
+            return 0;
+         case 'h':
+         default:
+            printf("\nIncorrect Usage\n");
+            exit(EXIT_FAILURE);
+            return -1;
       }
    }
    memset(teller_log, 0, sizeof(teller_log));
@@ -254,6 +264,7 @@ int main(int argc, char *argv[]) {
    clock_t end = clock();
    double cpu_time = ((double)(end-start)) / CLOCKS_PER_SEC;
 
+   int numIncorrect = 0;
    long long correct = 0;
    for (int i  = 0; i < NUM_ACCOUNTS; i++) {
       printRecord(&accounts[i]);
@@ -262,16 +273,20 @@ int main(int argc, char *argv[]) {
       }
       
       printf("   |> Correct Value:.....$%.2f\n", correct/100.00);
+      numIncorrect += ((correct + STARTING_AMOUNT - accounts[i].balance) == 0) ? 0 : 1;
       correct = 0;
    }
 
+   // this validation works because all of the currency is only transferred, no new currency is introduced to the system.
    printf("\n ~ Validating Correctness of Transfers:\n  (Sum of all acct balances)/(NUM_ACCOUNTS) = STARTING_AMOUNT\n");
-   double total = 0;
+   long long total = 0;
    for (int i = 0; i < NUM_ACCOUNTS; i++) {
       total += accounts[i].balance;
    }
-   printf("   Starting Amount: $%.2f, Final Average: $%.2f\n\n", (STARTING_AMOUNT)/100.00, (total/NUM_ACCOUNTS)/100.00);
-    printf("Number of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
+   printf("   Starting Amount Per Account: $%.2f, Final Average: $%.2f\n", (STARTING_AMOUNT)/100.00, (total/NUM_ACCOUNTS)/100.00);
+   printf("\n ~ Number of Accounts with incorrect balances: %d,  %.3f%%\n\n", numIncorrect, 1.00*(numIncorrect/NUM_ACCOUNTS));
+   
+   printf("Number of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
    printf("\nMax Transaction Amount:.....$%.2f\n", MAX_TRANSACTION_AMOUNT/100.00);
    printf("\n\nThis run (MUTEX & Deadlock Prevention Implemented) took: %.6f units of CPU-time\n\n", cpu_time);
    

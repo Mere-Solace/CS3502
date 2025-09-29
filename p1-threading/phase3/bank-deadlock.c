@@ -121,7 +121,6 @@ void freeRecord(Account *acc) {
       free(gc);
       gc = cur;
       cur = cur->next;
-      // printf("Freed record %d\n", ++x);
    }
 }
 

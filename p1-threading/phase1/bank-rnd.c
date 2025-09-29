@@ -163,8 +163,8 @@ int main(int argc, char *argv[]) {
       freeRecord(&accounts[i]);
    }
 
-   printf("\n\nMax Transaction Amount: $%.2f\n", (MAX_TRANSACTION_AMOUNT)*1.00);
-   printf("Number of Accounts: %d\nNumber of Tellers: %d\nNumber of Transactions Per Teller: %d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
+   printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
+   printf("\nMax Transaction Amount:.....$%.2f\n", MAX_TRANSACTION_AMOUNT*1.00);
    printf("\n\nThis run (no MUTEX) took: %.6f\n\n", cpu_time);
 }
 

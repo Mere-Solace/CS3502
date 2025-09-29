@@ -45,6 +45,10 @@ void addAccountRecord(Account *acc, int type, double amount) {
       perror("Failed to aquire lock");
       return;
    }
+   struct timespec ts;
+   ts.tv_sec = 0;
+   ts.tv_nsec = 50000;
+   nanosleep(&ts, NULL); // simulate processing delay: 50 u-secs
 
    acc->balance += (type * amount);
    Record *r = calloc(1, sizeof(Record));
@@ -177,10 +181,10 @@ int main(int argc, char *argv[]) {
 
       freeRecord(&accounts[i]);
    }
-   
-   printf("Number of Accounts:..........%d\nNumber of Tellers:.....%d\nNumber of Transactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
-   printf("\n\nMax Transaction Amount:...%d\n", MAX_TRANSACTION_AMOUNT);
-   printf("\n\nThis run (MUTEX Implemented) took: %.6f\n\n", cpu_time);
+
+   printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
+   printf("\nMax Transaction Amount:.....$%.2f\n", MAX_TRANSACTION_AMOUNT/100.00);
+   printf("\nThis run (MUTEX Implemented) took: %.6f\n\n", cpu_time);
 
    return 0;
 }
