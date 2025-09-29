@@ -9,9 +9,9 @@
 #include <string.h>
 
 #define NUM_ACCOUNTS 10
-#define TRANSACTIONS_PER_TELLER 1000
-#define NUM_THREADS 32
-#define MAX_TRANSACTION_AMOUNT 100000  // $1000.00 in cents
+#define TRANSACTIONS_PER_TELLER 100000
+#define NUM_THREADS 128
+#define MAX_TRANSACTION_AMOUNT 500000  // $5000.00 in cents
 #define STARTING_AMOUNT 200000         // $2000.00 in cents
 #define CACHELINE 64
 
@@ -19,7 +19,7 @@ int verbose = 0;
 
 typedef struct TransferRecord {
    int type;
-   int amount;
+   long long amount;
 
    struct Account *source;
    struct Account *dest;
@@ -33,7 +33,7 @@ typedef struct TransferRecord {
 
 typedef struct Account {
    int account_id;
-   int balance;
+   long long balance;
   
    pthread_mutex_t lock;
 
@@ -41,8 +41,8 @@ typedef struct Account {
    TransferRecord *last;  // last transaction
 } Account;
 
-Account createAccount(int id, double starting_balance) {
-   TransferRecord *sot = calloc(1, sizeof(TransferRecord));
+Account createAccount(int id, long long starting_balance) {
+   TransferRecord *sot = malloc(sizeof(TransferRecord));
    sot->next = NULL;
    Account new_acct = { .account_id = id, .balance = starting_balance, .sot = sot, .last = sot };
    pthread_mutex_init(&new_acct.lock, NULL);
@@ -57,7 +57,7 @@ static void timespec_add_ns(struct timespec *ts, long ns_to_add) {
     }
 }
 
-int addTransferRecord(Account *source, Account *dest, int type, double amount) {
+int addTransferRecord(Account *source, Account *dest, long long amount) {
    if (verbose) {
       printf("|[Thread %ld] Attempting Transfer from %d to %d\n", pthread_self(), source->account_id, dest->account_id);
    }
@@ -75,7 +75,6 @@ int addTransferRecord(Account *source, Account *dest, int type, double amount) {
       if (verbose) {
          printf("   first - {> Thread [%ld] timed out while waiting for Account [%d] <}\n", pthread_self(), acc_1->account_id);
       }
-      pthread_mutex_unlock(lock_1);
       return -1;
    }
    if (verbose) {
@@ -85,19 +84,18 @@ int addTransferRecord(Account *source, Account *dest, int type, double amount) {
    }
    
    clock_gettime(CLOCK_REALTIME, &ts);
-   ts.tv_nsec += 10000000;
+   timespec_add_ns(&ts, 10 * 1000000L); // 10 microseconds
    timeout = pthread_mutex_timedlock(lock_2, &ts);      
    if (timeout == ETIMEDOUT) {
       if (verbose) {
          printf("   second - {> Thread [%ld] timed out while waiting for Account [%d] <}\n", pthread_self(), acc_2->account_id);
       }
-      pthread_mutex_unlock(lock_2);
-      pthread_mutex_unlock(lock_2);
+      pthread_mutex_unlock(lock_1);
       return -1;
    }
-   source->balance -= type*amount;
-   TransferRecord *s = calloc(1, sizeof(TransferRecord));
-   s->type = -1*type;
+   source->balance -= amount;
+   TransferRecord *s = malloc(sizeof(TransferRecord));
+   s->type = -1;
    s->amount = amount;
 
    time(&s->tot);
@@ -107,9 +105,9 @@ int addTransferRecord(Account *source, Account *dest, int type, double amount) {
    source->last->next = s;
    source->last = s;
 
-   dest->balance += type*amount;
-   TransferRecord *d = calloc(1, sizeof(TransferRecord));
-   d->type = type;
+   dest->balance += amount;
+   TransferRecord *d = malloc(sizeof(TransferRecord));
+   d->type = +1;
    d->amount = amount;
 
    time(&d->tot);
@@ -132,7 +130,7 @@ void printRecord(Account *acc) {
    struct tm local;
    char buffer[64];
 
-   int curDel = 0;
+   long long curDel = 0L;
    int x = 1;
    if (verbose) {
       printf("\n~ Start of Transactions for Account: %d ~\n", acc->account_id);
@@ -154,7 +152,6 @@ void printRecord(Account *acc) {
       cur = cur->next;
       x++;
    }
-
    printf("\n > [ Transaction Summary - Account: %d ]\n", acc->account_id);
    printf("   | Current Balance:....$%.2f\n   | Net Change:.........$%.2f\n", (acc->balance)/100.00, (curDel)/100.00);  
 }
@@ -167,14 +164,13 @@ void freeRecord(Account *acc) {
       free(gc);
       gc = cur;
       cur = cur->next;
-      // printf("Freed record %d\n", ++x);
    }
 }
 
 Account accounts[NUM_ACCOUNTS];
 
 typedef struct PaddedRow {
-    int transaction_data[NUM_ACCOUNTS];
+    long long transaction_data[NUM_ACCOUNTS];
     char pad[CACHELINE]; // pad to next cache line
 } PaddedRow;
 
@@ -203,18 +199,16 @@ void *teller_thread(void *arg) {
          }
       }
 
-      int amount = 1 + rand_r(&seed) % ((MAX_TRANSACTION_AMOUNT)-2);
-      int random = (rand_r(&seed) % 2) - 1;
-      int type = random == 0 ? -1 : 1;
-      if (addTransferRecord(&accounts[source_acct_num], &accounts[dest_acct_num], type, amount) == -1) {
+      long long amount = 1 + rand_r(&seed) % ((MAX_TRANSACTION_AMOUNT)-2);
+      if (addTransferRecord(&accounts[source_acct_num], &accounts[dest_acct_num], amount) == -1) {
          i--;
          redo = 1;
          continue;
       }
 
-      teller_log[teller_id].transaction_data[source_acct_num] -= type*amount; // save amount in teller-specific data struct
-      teller_log[teller_id].transaction_data[dest_acct_num] += type*amount;
-      double dollar_amount = (type*amount)/100.00;
+      teller_log[teller_id].transaction_data[source_acct_num] -= amount; // save amount in teller-specific data struct
+      teller_log[teller_id].transaction_data[dest_acct_num] += amount;
+      double dollar_amount = (amount)/100.00;
       if (verbose) {
          printf("\n >>>+ Successful Transaction +<<<\n|> Teller [ %d ] t#{ %d } ||| Source [ %d ] -($%.2f) --> Dest [ %d ] +($%.2f)\n\n", 
             teller_id,
@@ -260,7 +254,7 @@ int main(int argc, char *argv[]) {
    clock_t end = clock();
    double cpu_time = ((double)(end-start)) / CLOCKS_PER_SEC;
 
-   int correct = 0;
+   long long correct = 0;
    for (int i  = 0; i < NUM_ACCOUNTS; i++) {
       printRecord(&accounts[i]);
       for (int t = 0; t < NUM_THREADS; t++) {
