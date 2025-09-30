@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#define NUM_ACCOUNTS 100
+#define NUM_ACCOUNTS 5
 #define TRANSACTIONS_PER_TELLER 1000000
 #define NUM_THREADS 32
 #define MAX_TRANSACTION_AMOUNT 500000  // $5000.00 in cents
