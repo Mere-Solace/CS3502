@@ -8,10 +8,10 @@
 #include <unistd.h>
 #include <string.h>
 
-#define NUM_ACCOUNTS 5
-#define TRANSACTIONS_PER_TELLER 100
-#define NUM_THREADS 32
-#define MAX_TRANSACTION_AMOUNT 500000  // $5000.00 in cents
+#define NUM_ACCOUNTS 10
+#define TRANSACTIONS_PER_TELLER 100000
+#define NUM_THREADS 64
+#define MAX_TRANSACTION_AMOUNT 5000000000  // $50000000.00 in cents
 #define STARTING_AMOUNT 200000         // $2000.00 in cents
 #define CACHELINE 64
 
@@ -68,7 +68,7 @@ int addTransferRecord(Account *source, Account *dest, long long amount) {
 
    struct timespec ts;
    clock_gettime(CLOCK_REALTIME, &ts);
-   timespec_add_ns(&ts, 10 * 1000000L); // 10 microseconds
+   timespec_add_ns(&ts, 10000L); // 10 microseconds
 
    int timeout = pthread_mutex_timedlock(lock_1, &ts);
    if (timeout == ETIMEDOUT) {
@@ -84,7 +84,7 @@ int addTransferRecord(Account *source, Account *dest, long long amount) {
    }
    
    clock_gettime(CLOCK_REALTIME, &ts);
-   timespec_add_ns(&ts, 10 * 1000000L); // 10 microseconds
+   timespec_add_ns(&ts, 10000L); // 10 microseconds
    timeout = pthread_mutex_timedlock(lock_2, &ts);      
    if (timeout == ETIMEDOUT) {
       if (verbose) {

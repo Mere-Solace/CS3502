@@ -9,8 +9,8 @@
 #include <getopt.h>
 
 #define NUM_ACCOUNTS 5
-#define TRANSACTIONS_PER_TELLER 100
-#define NUM_THREADS 100
+#define TRANSACTIONS_PER_TELLER 1000
+#define NUM_THREADS 32
 #define MAX_TRANSACTION_AMOUNT 1000
 
 int verbose = 0;
@@ -47,8 +47,8 @@ void addAccountRecord(Account *acc, int type, double amount) {
    }
    struct timespec ts;
    ts.tv_sec = 0;
-   ts.tv_nsec = 50000;
-   nanosleep(&ts, NULL); // simulate processing delay: 50 u-secs
+   ts.tv_nsec = 500;
+   nanosleep(&ts, NULL); // simulate processing delay: 0.5 u-secs
 
    acc->balance += (type * amount);
    Record *r = calloc(1, sizeof(Record));
