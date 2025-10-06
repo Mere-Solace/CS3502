@@ -9,7 +9,7 @@
 #include <string.h>
 
 #define NUM_ACCOUNTS 5
-#define TRANSACTIONS_PER_TELLER 1000000
+#define TRANSACTIONS_PER_TELLER 100
 #define NUM_THREADS 32
 #define MAX_TRANSACTION_AMOUNT 500000  // $5000.00 in cents
 #define STARTING_AMOUNT 200000         // $2000.00 in cents
@@ -244,6 +244,7 @@ int main(int argc, char *argv[]) {
             return -1;
       }
    }
+   
    memset(teller_log, 0, sizeof(teller_log));
 
    for (int i = 0; i < NUM_ACCOUNTS; i++) {
@@ -284,7 +285,7 @@ int main(int argc, char *argv[]) {
       total += accounts[i].balance;
    }
    printf("   Starting Amount Per Account: $%.2f, Final Average: $%.2f\n", (STARTING_AMOUNT)/100.00, (total/NUM_ACCOUNTS)/100.00);
-   printf("\n ~ Number of Accounts with incorrect balances: %d,  %.3f%%\n\n", numIncorrect, 1.00*(numIncorrect/NUM_ACCOUNTS));
+   printf("\n ~ Number of Accounts with incorrect balances: %d,  %.3f%% incorrect\n\n", numIncorrect, 1.00*(numIncorrect/NUM_ACCOUNTS));
    
    printf("Number of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
    printf("\nMax Transaction Amount:.....$%.2f\n", MAX_TRANSACTION_AMOUNT/100.00);

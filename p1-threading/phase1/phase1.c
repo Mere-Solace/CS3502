@@ -6,8 +6,8 @@
 #include <getopt.h>
 
 #define NUM_ACCOUNTS 5
-#define TRANSACTIONS_PER_TELLER 100
-#define NUM_THREADS 1000
+#define TRANSACTIONS_PER_TELLER 100000
+#define NUM_THREADS 32
 #define MAX_TRANSACTION_AMOUNT 1000
 
 int verbose = 0;
@@ -62,7 +62,7 @@ void printRecord(Account *acc) {
       localtime_r(&cur->tot, &local);
       strftime(buffer, sizeof(buffer), "%H:%M:%S", &local);
 
-      if (cur->type != 0 && verbose) {
+      if (cur->type != 0 && 0) { // TODO: change back
          printf("[%s.%06ld] Transaction %d:\n| >> Type: %s | Amount: $%.2f\n|\n", 
                buffer, 
                cur->micro.tv_usec,
@@ -124,13 +124,25 @@ int thread_ids[NUM_THREADS];
 
 int main(int argc, char *argv[]) {
    char opt;
-   while ((opt = getopt(argc, argv, "vh")) != -1) {
+   while ((opt = getopt(argc, argv, "cvh")) != -1) {
       switch (opt) {
-         case 'v': {
+         case 'v':
             verbose = 1;
-         }
+            break;
+         case 'c':
+            printf("\nCurrently compiled with:\n");
+            printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
+            printf("\nMax Transaction Amount:.....$%.2f\n\n", MAX_TRANSACTION_AMOUNT/100.00);
+            exit(EXIT_SUCCESS);
+            return 0;
+         case 'h':
+         default:
+            printf("\nIncorrect Usage\n");
+            exit(EXIT_FAILURE);
+            return -1;
       }
    }
+
    for (int i = 0; i < NUM_ACCOUNTS; i++) {
       accounts[i] = createAccount(i, 0.0);
    }
@@ -166,5 +178,7 @@ int main(int argc, char *argv[]) {
    printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
    printf("\nMax Transaction Amount:.....$%.2f\n", MAX_TRANSACTION_AMOUNT*1.00);
    printf("\n\nThis run (no MUTEX) took: %.6f\n\n", cpu_time);
+
+   return 0;
 }
 
