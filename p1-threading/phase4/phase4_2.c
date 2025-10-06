@@ -9,42 +9,23 @@
 #include <string.h>
 
 #define NUM_ACCOUNTS 10
-#define TRANSACTIONS_PER_TELLER 100000
-#define NUM_THREADS 64
+#define TRANSACTIONS_PER_TELLER 10000000
+#define NUM_THREADS 256
 #define MAX_TRANSACTION_AMOUNT 5000000000  // $50000000.00 in cents
 #define STARTING_AMOUNT 200000         // $2000.00 in cents
 #define CACHELINE 64
 
 int verbose = 0;
 
-typedef struct TransferRecord {
-   int type;
-   long long amount;
-
-   struct Account *source;
-   struct Account *dest;
-   
-   time_t tot;
-   struct timeval micro;
-
-   struct TransferRecord *pair;
-   struct TransferRecord *next;
-} TransferRecord;
-
 typedef struct Account {
    int account_id;
    long long balance;
   
    pthread_mutex_t lock;
-
-   TransferRecord *sot;   // start of transactions
-   TransferRecord *last;  // last transaction
 } Account;
 
 Account createAccount(int id, long long starting_balance) {
-   TransferRecord *sot = malloc(sizeof(TransferRecord));
-   sot->next = NULL;
-   Account new_acct = { .account_id = id, .balance = starting_balance, .sot = sot, .last = sot };
+   Account new_acct = { .account_id = id, .balance = starting_balance };
    pthread_mutex_init(&new_acct.lock, NULL);
    return new_acct;
 }
@@ -57,7 +38,7 @@ static void timespec_add_ns(struct timespec *ts, long ns_to_add) {
     }
 }
 
-int addTransferRecord(Account *source, Account *dest, long long amount) {
+int perform_transaction(Account *source, Account *dest, long long amount) {
    if (verbose) {
       printf("|[Thread %ld] Attempting Transfer from %d to %d\n", pthread_self(), source->account_id, dest->account_id);
    }
@@ -93,78 +74,13 @@ int addTransferRecord(Account *source, Account *dest, long long amount) {
       pthread_mutex_unlock(lock_1);
       return -1;
    }
+
    source->balance -= amount;
-   TransferRecord *s = malloc(sizeof(TransferRecord));
-   s->type = -1;
-   s->amount = amount;
-
-   time(&s->tot);
-   gettimeofday(&s->micro, NULL);
-
-   s->next = NULL;
-   source->last->next = s;
-   source->last = s;
-
    dest->balance += amount;
-   TransferRecord *d = malloc(sizeof(TransferRecord));
-   d->type = +1;
-   d->amount = amount;
-
-   time(&d->tot);
-   gettimeofday(&d->micro, NULL);
-
-   d->next = NULL;
-   dest->last->next = d;
-   dest->last = d;
-
-   s->pair = d;
-   d->pair = s;
-
+   
    pthread_mutex_unlock(lock_2);
    pthread_mutex_unlock(lock_1);
    return 0;
-}
-
-void printRecord(Account *acc) {
-   TransferRecord *cur = acc->sot->next;
-   struct tm local;
-   char buffer[64];
-
-   long long curDel = 0L;
-   int x = 1;
-   if (verbose) {
-      printf("\n~ Start of Transactions for Account: %d ~\n", acc->account_id);
-   }
-   while (cur != NULL) {
-      localtime_r(&cur->tot, &local);
-      strftime(buffer, sizeof(buffer), "%H:%M:%S", &local);
-
-      if (cur->type != 0 && verbose) {
-         printf(" [%s.%06ld] Transaction %d:\n | Type: %s - Amount: $%.2f\n", 
-               buffer, 
-               cur->micro.tv_usec,
-               x, 
-               cur->type == -1 ? "Withdrawal" : "Deposit", 
-               (cur->amount)/100.00);
-      }
-      
-      curDel += cur->amount * cur->type;
-      cur = cur->next;
-      x++;
-   }
-   printf("\n > [ Transaction Summary - Account: %d ]\n", acc->account_id);
-   printf("   | Current Balance:....$%.2f\n   | Net Change:.........$%.2f\n", (acc->balance)/100.00, (curDel)/100.00);  
-}
-
-void freeRecord(Account *acc) {
-   TransferRecord *gc = acc->sot; // garbage collector
-   TransferRecord *cur = acc->sot->next;
-   int x = 0;
-   while(cur != NULL) {
-      free(gc);
-      gc = cur;
-      cur = cur->next;
-   }
 }
 
 Account accounts[NUM_ACCOUNTS];
@@ -200,7 +116,7 @@ void *teller_thread(void *arg) {
       }
 
       long long amount = 1 + rand_r(&seed) % ((MAX_TRANSACTION_AMOUNT)-2);
-      if (addTransferRecord(&accounts[source_acct_num], &accounts[dest_acct_num], amount) == -1) {
+      if (perform_transaction(&accounts[source_acct_num], &accounts[dest_acct_num], amount) == -1) {
          i--;
          redo = 1;
          continue;
@@ -209,7 +125,7 @@ void *teller_thread(void *arg) {
       teller_log[teller_id].transaction_data[source_acct_num] -= amount; // save amount in teller-specific data struct
       teller_log[teller_id].transaction_data[dest_acct_num] += amount;
       double dollar_amount = (amount)/100.00;
-      if (verbose) {
+      if (1) { // TODO: change back
          printf("\n >>>+ Successful Transaction +<<<\n|> Teller [ %d ] t#{ %d } ||| Source [ %d ] -($%.2f) --> Dest [ %d ] +($%.2f)\n\n", 
             teller_id,
             i,
@@ -233,11 +149,11 @@ int main(int argc, char *argv[]) {
       switch (opt) {
          case 'v':
             verbose = 1;
+            break;
          case 'c':
             printf("\nCurrently compiled with:\n");
             printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
             printf("\nMax Transaction Amount:.....$%.2f\n\n", MAX_TRANSACTION_AMOUNT/100.00);
-            printf("Size of TransferRecord struct: %ld\n\n", sizeof(TransferRecord));
             exit(EXIT_SUCCESS);
             return 0;
          case 'h':
@@ -271,11 +187,11 @@ int main(int argc, char *argv[]) {
    int numIncorrect = 0;
    long long correct = 0;
    for (int i  = 0; i < NUM_ACCOUNTS; i++) {
-      printRecord(&accounts[i]);
       for (int t = 0; t < NUM_THREADS; t++) {
          correct += teller_log[t].transaction_data[i];
       }
-      
+      printf("\n > [ Transaction Summary - Account: %d ]\n", i);
+      printf("   | Current Balance:....$%.2f\n   | Net Change:.........$%.2f\n", (accounts[i].balance)/100.00, (accounts[i].balance - STARTING_AMOUNT)/100.00);  
       printf("   |> Correct Value:.....$%.2f\n", correct/100.00);
       numIncorrect += ((correct + STARTING_AMOUNT - accounts[i].balance) == 0) ? 0 : 1;
       correct = 0;
@@ -296,7 +212,6 @@ int main(int argc, char *argv[]) {
    
    for (int i = 0; i < NUM_ACCOUNTS; i++) {
       pthread_mutex_destroy(&accounts[i].lock);
-      freeRecord(&accounts[i]);
    }
    return 0;
 }
