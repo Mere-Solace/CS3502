@@ -9,11 +9,12 @@
 #include <stdint.h>
 
 #define NUM_ACCOUNTS 10
-#define TRANSACTIONS_PER_TELLER 1000
+#define TRANSACTIONS_PER_TELLER 100
 #define NUM_THREADS 32
-#define MAX_TRANSACTION_AMOUNT 500000
+#define MAX_TRANSACTION_AMOUNT 50
 
 int verbose = 0;
+int test = 0;
 
 typedef struct Record {
    int type;               // 1 for deposit, -1 for withdrawal
@@ -65,7 +66,7 @@ void printRecord(Account *acc) {
       localtime_r(&cur->tot, &local);
       strftime(buffer, sizeof(buffer), "%H:%M:%S", &local);
 
-      if (cur->type != 0 && 0) { // TODO: change back
+      if (cur->type != 0 && test) {
          printf("[%s.%06ld] Transaction %d:\n| >> Type: %s | Amount: $%.2f\n|\n", 
                buffer, 
                cur->micro.tv_usec,
@@ -128,13 +129,16 @@ int main(int argc, char *argv[]) {
    char opt;
    while ((opt = getopt(argc, argv, "cvh")) != -1) {
       switch (opt) {
+         case 't':
+            test = 1;
+            break;
          case 'v':
             verbose = 1;
             break;
          case 'c':
             printf("\nCurrently compiled with:\n");
             printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
-            printf("\nMax Transaction Amount:.....$%.2f\n\n", MAX_TRANSACTION_AMOUNT/100.00);
+            printf("\nMax Transaction Amount:.....$%.2f\n\n", MAX_TRANSACTION_AMOUNT*1.00);
             exit(EXIT_SUCCESS);
             return 0;
          case 'h':

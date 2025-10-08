@@ -10,9 +10,9 @@
 #include <math.h>
 
 #define NUM_ACCOUNTS 10
-#define TRANSACTIONS_PER_TELLER 10000
+#define TRANSACTIONS_PER_TELLER 1000
 #define NUM_THREADS 32
-#define MAX_TRANSACTION_AMOUNT 500000
+#define MAX_TRANSACTION_AMOUNT 50
 
 int verbose = 0;
 
@@ -78,7 +78,7 @@ void printRecord(Account *acc, int print_all) {
       localtime_r(&cur->tot, &local);
       strftime(buffer, sizeof(buffer), "%H:%M:%S", &local);
 
-      if (cur->type != 0 && print_all) {
+      if (cur->type != 0 && 0) {
          printf("[%s.%06ld] Transaction %d:\n| >> Type: %s | Amount: $%.2f\n|\n", 
                buffer, 
                cur->micro.tv_usec,
@@ -119,14 +119,15 @@ void *teller_thread(void *arg) {
       double amount = (1 + rand_r(&seed) % ((MAX_TRANSACTION_AMOUNT*100)-2))/100.00;
       int random = (rand_r(&seed) % 2) - 1;
       int type = random == 0 ? -1 : 1;
-      teller_log[teller_id][acct_num] += type*amount; // save amount in teller-specific data struct
+      double net = type*amount;
+      teller_log[teller_id][acct_num] += net; // save amount in teller-specific data struct
       
       if (verbose) {
          printf("> Teller [ %d ]\t t#{ %d }\t Acct [ %d ]\t $%.2f\n", 
             teller_id,
             i,
             acct_num,
-            type*amount 
+            net
          );
       }
       addAccountRecord(&accounts[acct_num], type, amount);
@@ -139,11 +140,22 @@ int thread_ids[NUM_THREADS];
 
 int main(int argc, char *argv[]) {
    char opt;
-   while ((opt = getopt(argc, argv, "vh")) != -1) {
+   while ((opt = getopt(argc, argv, "cvh")) != -1) {
       switch (opt) {
-         case 'v': {
+         case 'v':
             verbose = 1;
-         }
+            break;
+         case 'c':
+            printf("\nCurrently compiled with:\n");
+            printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
+            printf("\nMax Transaction Amount:.....$%.2f\n\n", MAX_TRANSACTION_AMOUNT*1.00);
+            exit(EXIT_SUCCESS);
+            return 0;
+         case 'h':
+         default:
+            printf("\nIncorrect Usage\n");
+            exit(EXIT_FAILURE);
+            return -1;
       }
    }
 
@@ -187,7 +199,8 @@ int main(int argc, char *argv[]) {
       }
       printf("   |> Correct Value:.....$%.2f\n", correct);
 
-      if ((int) (round(correct*100)) != (int) (round(accounts[i].balance*100))) {
+      double diff = fabs(correct - accounts[i].balance);
+      if (diff > 0.005) {
          numIncorrect++;
          printf("     { Incorrect balance }\n");
       }
@@ -198,7 +211,7 @@ int main(int argc, char *argv[]) {
    }
    printf("\nNumber of accounts with incorrect balance: %d, %.3f%% incorrect\n\n", numIncorrect, (100.00*numIncorrect/NUM_ACCOUNTS));
    printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
-   printf("\nMax Transaction Amount:.....$%.2f\n", MAX_TRANSACTION_AMOUNT*1.0);
+   printf("\nMax Transaction Amount:.....$%.2f\n", MAX_TRANSACTION_AMOUNT*1.00);
    printf("\nThis run (MUTEX Implemented) took: %.6f\n\n", cpu_time);
 
    return 0;
