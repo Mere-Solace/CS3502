@@ -4,6 +4,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <getopt.h>
+#include <string.h>
 
 #define NUM_ACCOUNTS 10
 #define TRANSACTIONS_PER_TELLER 10000
@@ -114,8 +115,8 @@ void printRecord(Account *acc, int print_all) {
 }
 
 void freeRecord(Account *acc) {
-   Record *gc = acc->sot; // garbage collector
-   Record *cur = acc->sot->next;
+   TransferRecord *gc = acc->sot; // garbage collector
+   TransferRecord *cur = acc->sot->next;
    while(cur != NULL) {
       free(gc);
       gc = cur;

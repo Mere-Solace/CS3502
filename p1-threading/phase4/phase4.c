@@ -157,8 +157,8 @@ void printRecord(Account *acc) {
 }
 
 void freeRecord(Account *acc) {
-   Record *gc = acc->sot; // garbage collector
-   Record *cur = acc->sot->next;
+   TransferRecord *gc = acc->sot; // garbage collector
+   TransferRecord *cur = acc->sot->next;
    while(cur != NULL) {
       free(gc);
       gc = cur;
