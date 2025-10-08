@@ -9,10 +9,10 @@
 #include <string.h>
 
 #define NUM_ACCOUNTS 10
-#define TRANSACTIONS_PER_TELLER 100000
-#define NUM_THREADS 64
-#define MAX_TRANSACTION_AMOUNT 5000000000  // $50000000.00 in cents
-#define STARTING_AMOUNT 200000         // $2000.00 in cents
+#define TRANSACTIONS_PER_TELLER 10000
+#define NUM_THREADS 32
+#define MAX_TRANSACTION_AMOUNT 50000000   // $500000.00 in cents
+#define STARTING_AMOUNT 200000            // $2000.00 in cents
 #define CACHELINE 64
 
 int verbose = 0;
@@ -157,9 +157,8 @@ void printRecord(Account *acc) {
 }
 
 void freeRecord(Account *acc) {
-   TransferRecord *gc = acc->sot; // garbage collector
-   TransferRecord *cur = acc->sot->next;
-   int x = 0;
+   Record *gc = acc->sot; // garbage collector
+   Record *cur = acc->sot->next;
    while(cur != NULL) {
       free(gc);
       gc = cur;
@@ -220,8 +219,7 @@ void *teller_thread(void *arg) {
          );
       }
    }
-
-   return 0;
+   return NULL;
 }
 
 pthread_t threads[NUM_THREADS];
@@ -258,11 +256,19 @@ int main(int argc, char *argv[]) {
 
    for (int i = 0; i < NUM_THREADS; i++) {
       thread_ids[i] = i;
-      pthread_create(&threads[i], NULL, teller_thread, &thread_ids[i]);
+      int rc = pthread_create(&threads[i], NULL, teller_thread, &thread_ids[i]);
+      if (rc != 0) {
+         fprintf(stderr, "Error: pthread_join failed for thread %d: %s\n", i, strerror(rc));
+         exit(EXIT_FAILURE);
+      }
    }
 
    for (int i = 0; i < NUM_THREADS; i++) {
-      pthread_join(threads[i], NULL);
+      int rc = pthread_join(threads[i], NULL);
+      if (rc != 0) {
+         fprintf(stderr, "Error: pthread_join failed for thread %d: %s\n", i, strerror(rc));
+         exit(EXIT_FAILURE);
+      }
    }
 
    clock_t end = clock();

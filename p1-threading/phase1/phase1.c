@@ -4,11 +4,14 @@
 #include <time.h>
 #include <sys/time.h>
 #include <getopt.h>
+#include <math.h>
+#include <string.h>
+#include <stdint.h>
 
-#define NUM_ACCOUNTS 5
-#define TRANSACTIONS_PER_TELLER 1000
+#define NUM_ACCOUNTS 10
+#define TRANSACTIONS_PER_TELLER 100
 #define NUM_THREADS 32
-#define MAX_TRANSACTION_AMOUNT 1000
+#define MAX_TRANSACTION_AMOUNT 500000
 
 int verbose = 0;
 
@@ -23,7 +26,7 @@ typedef struct Record {
 typedef struct Account {
    int account_id;
    double balance;
-   
+
    Record *sot;   // start of transactions
    Record *last;  // last transaction
 } Account;
@@ -83,12 +86,10 @@ void printRecord(Account *acc) {
 void freeRecord(Account *acc) {
    Record *gc = acc->sot; // garbage collector
    Record *cur = acc->sot->next;
-   int x = 0;
    while(cur != NULL) {
       free(gc);
       gc = cur;
       cur = cur->next;
-      // printf("Freed record %d\n", ++x);
    }
 }
 
@@ -117,6 +118,7 @@ void *teller_thread(void *arg) {
       }
       addAccountRecord(&accounts[acct_num], type, amount);
    }
+   return NULL;
 }
 
 pthread_t threads[NUM_THREADS];
@@ -144,22 +146,32 @@ int main(int argc, char *argv[]) {
    }
 
    for (int i = 0; i < NUM_ACCOUNTS; i++) {
-      accounts[i] = createAccount(i, 0.0);
+      accounts[i] = createAccount(i, 0.00);
    }
 
    clock_t start = clock();
 
    for (int i = 0; i < NUM_THREADS; i++) {
       thread_ids[i] = i;
-      pthread_create(&threads[i], NULL, teller_thread, &thread_ids[i]);
+      int rc = pthread_create(&threads[i], NULL, teller_thread, &thread_ids[i]);
+      if (rc != 0) {
+         fprintf(stderr, "Error: pthread_join failed for thread %d: %s\n", i, strerror(rc));
+         exit(EXIT_FAILURE);
+      }
    }
 
    for (int i = 0; i < NUM_THREADS; i++) {
-      pthread_join(threads[i], NULL);
+      int rc = pthread_join(threads[i], NULL);
+      if (rc != 0) {
+         fprintf(stderr, "Error: pthread_join failed for thread %d: %s\n", i, strerror(rc));
+         exit(EXIT_FAILURE);
+      }
    }
    
    clock_t end = clock();
    double cpu_time = ((double)(end-start)) / CLOCKS_PER_SEC;
+   
+   int numIncorrect = 0;
 
    for (int i  = 0; i < NUM_ACCOUNTS; i++) {
       printRecord(&accounts[i]);
@@ -170,11 +182,17 @@ int main(int argc, char *argv[]) {
       }
       
       printf("   |> Correct Value:.....$%.2f\n", correct);
-      correct = 0;
+      
+      if ((int) (round(correct*100)) != (int) (round(accounts[i].balance*100))) {
+         numIncorrect++;
+         printf("     { Incorrect balance }\n");
+      }
+
+      correct = 0.00;
 
       freeRecord(&accounts[i]);
    }
-
+   printf("\nNumber of accounts with incorrect balance: %d, %.3f%% incorrect\n\n", numIncorrect, (100.00*numIncorrect/NUM_ACCOUNTS));
    printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
    printf("\nMax Transaction Amount:.....$%.2f\n", MAX_TRANSACTION_AMOUNT*1.00);
    printf("\n\nThis run (no MUTEX) took: %.6f\n\n", cpu_time);
