@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 #define NUM_ACCOUNTS 10
-#define TRANSACTIONS_PER_TELLER 100
+#define TRANSACTIONS_PER_TELLER 1000
 #define NUM_THREADS 32
 #define MAX_TRANSACTION_AMOUNT 50
 
@@ -127,7 +127,7 @@ int thread_ids[NUM_THREADS];
 
 int main(int argc, char *argv[]) {
    char opt;
-   while ((opt = getopt(argc, argv, "cvh")) != -1) {
+   while ((opt = getopt(argc, argv, "tcvh")) != -1) {
       switch (opt) {
          case 't':
             test = 1;

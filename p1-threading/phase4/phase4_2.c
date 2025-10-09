@@ -9,7 +9,7 @@
 #include <string.h>
 
 #define NUM_ACCOUNTS 10
-#define TRANSACTIONS_PER_TELLER 10000
+#define TRANSACTIONS_PER_TELLER 1000000
 #define NUM_THREADS 32
 #define MAX_TRANSACTION_AMOUNT 50000000000   // $500000000.00 in cents
 #define STARTING_AMOUNT 200000            // $2000.00 in cents

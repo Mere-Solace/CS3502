@@ -9,7 +9,7 @@
 #include <string.h>
 
 #define NUM_ACCOUNTS 10
-#define TRANSACTIONS_PER_TELLER 10000
+#define TRANSACTIONS_PER_TELLER 1000000
 #define NUM_THREADS 32
 #define MAX_TRANSACTION_AMOUNT 50000000   // $500000.00 in cents
 #define STARTING_AMOUNT 200000            // $2000.00 in cents
@@ -231,6 +231,7 @@ int main(int argc, char *argv[]) {
       switch (opt) {
          case 'v':
             verbose = 1;
+            break;
          case 'c':
             printf("\nCurrently compiled with:\n");
             printf("\nNumber of Accounts:.........%d\nNumber of Tellers:..........%d\nTransactions Per Teller:....%d", NUM_ACCOUNTS, NUM_THREADS, TRANSACTIONS_PER_TELLER);
