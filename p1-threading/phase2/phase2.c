@@ -49,7 +49,7 @@ void addAccountRecord(Account *acc, int type, double amount) {
    struct timespec ts;
    ts.tv_sec = 0;
    ts.tv_nsec = 500;
-   nanosleep(&ts, NULL); // simulate processing delay: 0.5 u-secs
+   nanosleep(&ts, NULL); // simulate processing delay: 0.5 u-
 
    acc->balance += (type * amount);
    Record *r = calloc(1, sizeof(Record));

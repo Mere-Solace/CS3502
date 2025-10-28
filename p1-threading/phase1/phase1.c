@@ -8,10 +8,14 @@
 #include <string.h>
 #include <stdint.h>
 
-#define NUM_ACCOUNTS 10
-#define TRANSACTIONS_PER_TELLER 1000
-#define NUM_THREADS 32
-#define MAX_TRANSACTION_AMOUNT 50
+#define MAX_NUM_ACCOUNTS 10000
+#define MAX_NUM_THREADS 256
+
+int NUM_ACCOUNTS = 10;
+int NUM_THREADS = 32;
+
+int TRANSACTIONS_PER_TELLER = 1000;
+int MAX_TRANSACTION_AMOUNT = 50;
 
 int verbose = 0;
 int test = 0;
@@ -94,8 +98,8 @@ void freeRecord(Account *acc) {
    }
 }
 
-Account accounts[NUM_ACCOUNTS];
-double teller_log[NUM_THREADS][NUM_ACCOUNTS];
+Account accounts[MAX_NUM_ACCOUNTS];
+double teller_log[MAX_NUM_ACCOUNTS][MAX_NUM_ACCOUNTS];
 
 void *teller_thread(void *arg) {
    int teller_id = *(int *)arg;
@@ -122,13 +126,27 @@ void *teller_thread(void *arg) {
    return NULL;
 }
 
-pthread_t threads[NUM_THREADS];
-int thread_ids[NUM_THREADS];
+pthread_t threads[MAX_NUM_THREADS];
+int thread_ids[MAX_NUM_THREADS];
 
 int main(int argc, char *argv[]) {
    char opt;
-   while ((opt = getopt(argc, argv, "tcvh")) != -1) {
+   while ((opt = getopt(argc, argv, "a:p:o:m:tcvh")) != -1) {
       switch (opt) {
+         case 'a':
+            NUM_ACCOUNTS = atoi(optarg);
+            NUM_ACCOUNTS = NUM_ACCOUNTS < MAX_NUM_ACCOUNTS ? NUM_ACCOUNTS : MAX_NUM_ACCOUNTS;
+            break;
+         case 'p':
+            NUM_THREADS = atoi(optarg);
+            NUM_THREADS = NUM_THREADS < MAX_NUM_THREADS ? NUM_THREADS : MAX_NUM_THREADS;
+            break;
+         case 'o':
+            TRANSACTIONS_PER_TELLER = atoi(optarg);
+            break;
+         case 'm':
+            MAX_TRANSACTION_AMOUNT = atoi(optarg);
+            break;
          case 't':
             test = 1;
             break;
