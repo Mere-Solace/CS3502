@@ -23,16 +23,16 @@
 #define SEM_EMPTY "/sem_empty"
 #define SEM_FULL "/sem_full"
 
-// TODO: Define the item structure (item_t)
-// Each item should contain:
-//   - The data value
-//   - Which producer created it
-//   - Any other fields you think are necessary
+typedef struct {
+    int value;
+    int producer_id;
+} item_t;
 
-// TODO: Define the shared buffer structure (shared_buffer_t)
-// The buffer should contain:
-//   - An array of items
-//   - Variables to track the buffer state
-//   - Any other fields needed for synchronization
+typedef struct {
+    item_t buffer[BUFFER_SIZE];
+    int head;
+    int tail;
+    int count;
+} shared_buffer_t;
 
 #endif

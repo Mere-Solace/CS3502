@@ -44,14 +44,14 @@ int main(int argc, char* argv[]) {
     // Seed random number generator
     srand(time(NULL) + producer_id);
     
-    // TODO: Attach to shared memory
-    // shm_id = shmget(SHM_KEY, sizeof(shared_buffer_t), IPC_CREAT | 0666);
-    // buffer = (shared_buffer_t*)shmat(shm_id, NULL, 0);
+    // Attach to shared memory
+    shm_id = shmget(SHM_KEY, sizeof(shared_buffer_t), IPC_CREAT | 0666);
+    buffer = (shared_buffer_t*)shmat(shm_id, NULL, 0);
     
-    // TODO: Open semaphores
-    // mutex = sem_open(SEM_MUTEX, O_CREAT, 0644, 1);
-    // empty = sem_open(SEM_EMPTY, O_CREAT, 0644, BUFFER_SIZE);
-    // full = sem_open(SEM_FULL, O_CREAT, 0644, 0);
+    // Open semaphores
+    mutex = sem_open(SEM_MUTEX, O_CREAT, 0644, 1);
+    empty = sem_open(SEM_EMPTY, O_CREAT, 0644, BUFFER_SIZE);
+    full = sem_open(SEM_FULL, O_CREAT, 0644, 0);
     
     printf("Producer %d: Starting to produce %d items\n", producer_id, num_items);
     
@@ -62,24 +62,24 @@ int main(int argc, char* argv[]) {
         item.value = producer_id * 1000 + i;
         item.producer_id = producer_id;
         
-        // TODO: Wait for empty slot
-        // sem_wait(empty);
+        // Wait for empty slot
+        sem_wait(empty);
         
-        // TODO: Enter critical section
-        // sem_wait(mutex);
+        // Enter critical section
+        sem_wait(mutex);
         
-        // TODO: Add item to buffer
-        // buffer->buffer[buffer->head] = item;
-        // buffer->head = (buffer->head + 1) % BUFFER_SIZE;
-        // buffer->count++;
+        // Add item to buffer
+        buffer->buffer[buffer->head] = item;
+        buffer->head = (buffer->head + 1) % BUFFER_SIZE;
+        buffer->count++;
         
         printf("Producer %d: Produced value %d\n", producer_id, item.value);
         
-        // TODO: Exit critical section
-        // sem_post(mutex);
+        // Exit critical section
+        sem_post(mutex);
         
-        // TODO: Signal item available
-        // sem_post(full);
+        // Signal item available
+        sem_post(full);
         
         // Simulate production time
         usleep(rand() % 100000);

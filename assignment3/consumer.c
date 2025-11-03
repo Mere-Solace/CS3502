@@ -44,38 +44,38 @@ int main(int argc, char* argv[]) {
     // Seed random number generator
     srand(time(NULL) + consumer_id * 100);
     
-    // TODO: Attach to shared memory
-    // shm_id = shmget(SHM_KEY, sizeof(shared_buffer_t), 0666);
-    // buffer = (shared_buffer_t*)shmat(shm_id, NULL, 0);
+    // Attach to shared memory
+    shm_id = shmget(SHM_KEY, sizeof(shared_buffer_t), 0666);
+    buffer = (shared_buffer_t*)shmat(shm_id, NULL, 0);
     
-    // TODO: Open semaphores (don't use O_CREAT - producer creates them)
-    // mutex = sem_open(SEM_MUTEX, 0);
-    // empty = sem_open(SEM_EMPTY, 0);
-    // full = sem_open(SEM_FULL, 0);
+    // Open semaphores (don't use O_CREAT - producer creates them)
+    mutex = sem_open(SEM_MUTEX, 0);
+    empty = sem_open(SEM_EMPTY, 0);
+    full = sem_open(SEM_FULL, 0);
     
     printf("Consumer %d: Starting to consume %d items\n", consumer_id, num_items);
     
-    // TODO: Main consumption loop
+    // Main consumption loop
     for (int i = 0; i < num_items; i++) {
-        // TODO: Wait for full slot
-        // sem_wait(full);
+        // Wait for full slot
+        sem_wait(full);
         
-        // TODO: Enter critical section
-        // sem_wait(mutex);
+        // Enter critical section
+        sem_wait(mutex);
         
-        // TODO: Remove item from buffer
-        // item_t item = buffer->buffer[buffer->tail];
-        // buffer->tail = (buffer->tail + 1) % BUFFER_SIZE;
-        // buffer->count--;
+        // Remove item from buffer
+        item_t item = buffer->buffer[buffer->tail];
+        buffer->tail = (buffer->tail + 1) % BUFFER_SIZE;
+        buffer->count--;
         
-        // printf("Consumer %d: Consumed value %d from Producer %d\n",
-        //        consumer_id, item.value, item.producer_id);
+        printf("Consumer %d: Consumed value %d from Producer %d\n",
+               consumer_id, item.value, item.producer_id);
         
-        // TODO: Exit critical section
-        // sem_post(mutex);
+        // Exit critical section
+        sem_post(mutex);
         
-        // TODO: Signal empty slot
-        // sem_post(empty);
+        // Signal empty slot
+        sem_post(empty);
         
         // Simulate consumption time
         usleep(rand() % 100000);
