@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "p3-file_system/1.0.0": {
+        "runtime": {
+          "p3-file_system.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "p3-file_system/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
