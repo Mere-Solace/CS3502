@@ -190,6 +190,8 @@ public static class FileSystemUtils
     /// <summary>
     /// Validate a file or folder name for common invalid characters and empty values.
     /// Throws FileSystemException with a friendly message when invalid.
+    /// This is called early (before attempting file operations) to catch user errors quickly
+    /// and avoid failures deep in I/O operations.
     /// </summary>
     public static void ValidateFileName(string? name)
     {
@@ -235,12 +237,23 @@ public static class FileSystemUtils
         }
     }
 
+    /// <summary>
+    /// Classify whether an IOException is likely due to the file being locked by another process.
+    /// Checks both the message string and the error code. Used in catch blocks to provide
+    /// targeted, actionable error messages (e.g., "close the file in another app and retry").
+    /// </summary>
     private static bool IsFileLocked(Exception ex)
     {
         var msg = ex.Message?.ToLowerInvariant() ?? "";
         return msg.Contains("being used by another process") || msg.Contains("used by another process") || msg.Contains("file is in use");
     }
 
+    /// <summary>
+    /// Classify whether an IOException is likely due to insufficient disk space.
+    /// Checks the message string for common keywords and also checks the HResult against
+    /// the Windows error code ERROR_DISK_FULL (0x80070070). This helps distinguish a disk-full
+    /// error from other I/O problems so the UI can give specific guidance to the user.
+    /// </summary>
     private static bool IsDiskFull(Exception ex)
     {
         var msg = ex.Message?.ToLowerInvariant() ?? "";

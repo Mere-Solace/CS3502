@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("p3-file_system")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+197b6bc3f211aacf264dc244f8b06d407d616c0a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e3fdf3a22c11838873951d24a8ec28a3b4b37fd6")]
 [assembly: System.Reflection.AssemblyProductAttribute("p3-file_system")]
 [assembly: System.Reflection.AssemblyTitleAttribute("p3-file_system")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

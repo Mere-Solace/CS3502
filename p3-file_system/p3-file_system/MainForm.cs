@@ -48,7 +48,15 @@ public class MainForm : Form
     {
         currentWorkingPath = path;
         if (lblCurWorkingDirectory != null)
-            lblCurWorkingDirectory.Text = "Current Working Directory: " + currentWorkingPath;
+        {
+            // Display path relative to root folder (e.g., ~/root/subfolder instead of full path)
+            string displayPath = path.Equals(rootPath, StringComparison.OrdinalIgnoreCase)
+                ? "~\\root"
+                : "~\\root" + (path.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase)
+                    ? path.Substring(rootPath.Length)
+                    : "\\" + Path.GetFileName(path));
+            lblCurWorkingDirectory.Text = "Current Working Directory: " + displayPath;
+        }
     }
 
     private void InitializeComponents()
@@ -139,6 +147,12 @@ public class MainForm : Form
         }
     }
 
+    /// <summary>
+    /// Rebuild the directory tree view from scratch while preserving UI state.
+    /// This captures which nodes are expanded and which node is selected before clearing,
+    /// then restores that state after rebuilding. This prevents the frustrating UX of
+    /// having the tree collapse every time a file is created or deleted.
+    /// </summary>
     private void RefreshTree()
     {
         // Preserve UI state (which nodes were expanded and the selected node)
@@ -175,6 +189,12 @@ public class MainForm : Form
     }
 
     // Capture paths of expanded nodes so we can restore opened/closed state after a refresh
+    /// <summary>
+    /// Traverse the tree and collect full paths of all expanded nodes into a HashSet.
+    /// Uses case-insensitive comparison since Windows file paths are case-insensitive.
+    /// This set is later used by RestoreExpandedNodes to re-expand the same nodes
+    /// after RefreshTree rebuilds the tree from disk.
+    /// </summary>
     private System.Collections.Generic.HashSet<string> CaptureExpandedNodes()
     {
         var set = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -192,6 +212,11 @@ public class MainForm : Form
             CaptureExpandedNodesRecursive(child, set);
     }
 
+    /// <summary>
+    /// Recursively walk the rebuilt tree and expand nodes whose paths are in the expandedPaths set.
+    /// Wrapped in try/catch because Expand() can fail silently if node is not yet fully initialized.
+    /// This is called after LoadDirectoryNode completes so all nodes exist in memory.
+    /// </summary>
     private void RestoreExpandedNodes(TreeNode node, System.Collections.Generic.HashSet<string> expandedPaths)
     {
         if (node.Tag is string tag && expandedPaths.Contains(tag))
@@ -202,6 +227,10 @@ public class MainForm : Form
             RestoreExpandedNodes(child, expandedPaths);
     }
 
+    /// <summary>
+    /// Recursively search the tree for a node whose Tag matches the given path (case-insensitive).
+    /// Returns the first match found or null if not found.
+    /// </summary>
     private TreeNode? FindNodeByPath(TreeNodeCollection nodes, string path)
     {
         foreach (TreeNode node in nodes)
@@ -305,6 +334,8 @@ public class MainForm : Form
         }
 
         // Log details for debugging, but present a concise friendly message to the user.
+        // This ensures we capture technical details (full stack trace, inner exceptions) in the
+        // debug output for developers, while the user sees only a simple, understandable message
         try { Debug.WriteLine(ex.ToString()); } catch { }
         MessageBox.Show(defaultMessage, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
@@ -457,24 +488,10 @@ public class MainForm : Form
             }
 
             var itemName = Path.GetFileName(path);
-            // If it's a directory and non-empty, ask the user whether to delete recursively
+            // Handle file vs directory deletion
             if (IsDirectory(path))
             {
-                bool nonEmpty = false;
-                try { nonEmpty = Directory.EnumerateFileSystemEntries(path).Any(); } catch { nonEmpty = true; }
-                if (nonEmpty)
-                {
-                    var prompt = $"Folder '" + itemName + "' contains files or subfolders. Delete recursively?";
-                    var answer = MessageBox.Show(prompt, AppConstants.ConfirmTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if (answer != DialogResult.Yes) return; // user chose not to delete recursively
-                    // proceed with recursive delete
-                    FileSystemUtils.DeleteDirectory(path, true);
-                }
-                else
-                {
-                    // empty folder - delete without additional prompt
-                    FileSystemUtils.DeleteDirectory(path, false);
-                }
+                DeleteFolderWithOptions(path, itemName);
             }
             else if (IsFile(path))
             {
@@ -493,6 +510,46 @@ public class MainForm : Form
         catch (Exception ex)
         {
             ShowFriendlyError(ex, "Failed to delete the selected item.");
+        }
+    }
+
+    /// <summary>
+    /// Prompt the user with delete options for a folder:
+    /// 1. Yes = Delete empty only (fail if not empty)
+    /// 2. No = Delete recursively (with confirmation)
+    /// 3. Cancel = Abort
+    /// </summary>
+    private void DeleteFolderWithOptions(string folderPath, string folderName)
+    {
+        var result = MessageBox.Show(
+            $"Delete folder '{folderName}'?\n\nYes = Delete (fail if not empty)\nNo = Delete recursively (with confirmation)\nCancel = Abort",
+            AppConstants.ConfirmTitle,
+            MessageBoxButtons.YesNoCancel,
+            MessageBoxIcon.Question
+        );
+
+        if (result == DialogResult.Cancel)
+            return; // User chose cancel, do nothing
+
+        if (result == DialogResult.Yes)
+        {
+            // Delete empty only (non-recursive)
+            FileSystemUtils.DeleteDirectory(folderPath, false);
+        }
+        else if (result == DialogResult.No)
+        {
+            // User chose recursive delete — ask for confirmation
+            var confirm = MessageBox.Show(
+                $"Permanently delete '{folderName}' and ALL its contents?\n\nThis cannot be undone.",
+                AppConstants.ConfirmTitle,
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning
+            );
+            if (confirm == DialogResult.Yes)
+            {
+                FileSystemUtils.DeleteDirectory(folderPath, true);
+            }
+            // else: user said no to the confirmation, do nothing
         }
     }
 
