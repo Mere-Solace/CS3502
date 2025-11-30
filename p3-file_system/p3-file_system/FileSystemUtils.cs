@@ -1,6 +1,3 @@
-using System;
-using System.IO;
-using System.Linq;
 using System.Diagnostics;
 
 public class FileSystemException : Exception
@@ -54,27 +51,6 @@ public static class FileSystemUtils
         catch (Exception ex)
         {
             throw new FileSystemException("Unexpected error while ensuring root folder exists.", ex);
-        }
-    }
-
-    public static string[] ListFiles(string rootPath)
-    {
-        try
-        {
-            if (!Directory.Exists(rootPath)) return Array.Empty<string>();
-            return Directory.GetFiles(rootPath).OrderBy(Path.GetFileName).ToArray();
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            throw new FileSystemException("Permission denied listing files in the folder.", ex);
-        }
-        catch (DirectoryNotFoundException ex)
-        {
-            throw new FileSystemException("The folder does not exist.", ex);
-        }
-        catch (IOException ex)
-        {
-            throw new FileSystemException("I/O error while listing files.", ex);
         }
     }
 
@@ -222,6 +198,7 @@ public static class FileSystemUtils
     }
 
     public static bool IsDirectory(string path) => Directory.Exists(path);
+
     public static bool IsFile(string path) => File.Exists(path);
 
     public static void RevealInExplorer(string path)

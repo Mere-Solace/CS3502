@@ -1,8 +1,4 @@
-using System;
-using System.IO;
-using System.Linq;
 using System.Diagnostics;
-using System.Windows.Forms;
 
 public class MainForm : Form
 {
@@ -22,6 +18,7 @@ public class MainForm : Form
     private Button? btnCreateFolder;
     private Button? btnOpen;
     private Button? btnSave;
+    private Button? btnMove;
     private Button? btnDelete;
     private Button? btnRefresh;
 
@@ -49,12 +46,23 @@ public class MainForm : Form
         currentWorkingPath = path;
         if (lblCurWorkingDirectory != null)
         {
-            // Display path relative to root folder (e.g., ~/root/subfolder instead of full path)
-            string displayPath = path.Equals(rootPath, StringComparison.OrdinalIgnoreCase)
-                ? "~\\root"
-                : "~\\root" + (path.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase)
-                    ? path.Substring(rootPath.Length)
-                    : "\\" + Path.GetFileName(path));
+            // trim the rootPath using a built-in, predefined set of chars
+            var trimmed = rootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            var rootRoot = Path.GetPathRoot(trimmed) ?? AppConstants.RootFolderName;
+            string finalRootName;
+            if (string.Equals(trimmed, rootRoot, StringComparison.OrdinalIgnoreCase))
+                finalRootName = rootRoot.TrimEnd(Path.DirectorySeparatorChar);
+            else 
+                finalRootName = new DirectoryInfo(trimmed).Name;
+
+            var relative = Path.GetRelativePath(rootPath, path);
+
+            // Display path relative to root folder (e.g., ~\root\subfolder instead of full path)
+            string displayPath = relative == "." || string.IsNullOrEmpty(relative)
+                ? $"~\\{finalRootName}"
+                : $"~\\{finalRootName}\\{relative}";
+                
             lblCurWorkingDirectory.Text = "Current Working Directory: " + displayPath;
         }
     }
@@ -92,6 +100,7 @@ public class MainForm : Form
         btnCreateFolder = new Button { Text = "Create Folder", Width = 100 };
         btnOpen = new Button { Text = "Open", Width = 90 };
         btnSave = new Button { Text = "Save", Width = 90 };
+        btnMove = new Button { Text = "Move", Width = 90 };
         btnDelete = new Button { Text = "Delete", Width = 90 };
         btnRefresh = new Button { Text = "Refresh", Width = 90 };
 
@@ -99,15 +108,16 @@ public class MainForm : Form
         btnCreateFolder.Click += (s, e) => CreateFolder();
         btnOpen.Click += (s, e) => OpenSelectedNode();
         btnSave.Click += (s, e) => SaveFile();
+        btnMove.Click += (s, e) => MoveSelectedNode();
         btnDelete.Click += (s, e) => DeleteNode();
         btnRefresh.Click += (s, e) => RefreshTree();
 
-        btnPanel.Controls.AddRange(new Control[] { btnCreateFile, btnCreateFolder, btnOpen, btnSave, btnDelete, btnRefresh });
-
+        btnPanel.Controls.AddRange([btnCreateFile, btnCreateFolder, btnOpen, btnSave, btnMove, btnDelete, btnRefresh ]);
         // Context menu for tree view (right-click)
         treeContextMenu = new ContextMenuStrip();
         treeContextMenu.Items.Add("Open", null, (s, e) => OpenSelectedNode());
         treeContextMenu.Items.Add("Rename", null, (s, e) => RenameSelectedNode());
+        treeContextMenu.Items.Add("Move", null, (s, e) => MoveSelectedNode());
         treeContextMenu.Items.Add("Create Folder", null, (s, e) => CreateFolderInNode());
         treeContextMenu.Items.Add("Create File", null, (s, e) => CreateFileInNode());
         treeContextMenu.Items.Add(new ToolStripSeparator());
@@ -195,16 +205,16 @@ public class MainForm : Form
     /// This set is later used by RestoreExpandedNodes to re-expand the same nodes
     /// after RefreshTree rebuilds the tree from disk.
     /// </summary>
-    private System.Collections.Generic.HashSet<string> CaptureExpandedNodes()
+    private HashSet<string> CaptureExpandedNodes()
     {
-        var set = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (treeView == null) return set;
         foreach (TreeNode node in treeView.Nodes)
             CaptureExpandedNodesRecursive(node, set);
         return set;
     }
 
-    private void CaptureExpandedNodesRecursive(TreeNode node, System.Collections.Generic.HashSet<string> set)
+    private void CaptureExpandedNodesRecursive(TreeNode node, HashSet<string> set)
     {
         if (node.IsExpanded && node.Tag is string tag)
             set.Add(tag);
@@ -217,7 +227,7 @@ public class MainForm : Form
     /// Wrapped in try/catch because Expand() can fail silently if node is not yet fully initialized.
     /// This is called after LoadDirectoryNode completes so all nodes exist in memory.
     /// </summary>
-    private void RestoreExpandedNodes(TreeNode node, System.Collections.Generic.HashSet<string> expandedPaths)
+    private void RestoreExpandedNodes(TreeNode node, HashSet<string> expandedPaths)
     {
         if (node.Tag is string tag && expandedPaths.Contains(tag))
         {
@@ -583,6 +593,53 @@ public class MainForm : Form
         }
     }
 
+    private void MoveSelectedNode()
+    {
+        try
+        {
+            var sourcePath = GetSelectedPath();
+            if (sourcePath == null) { MessageBox.Show("Select a file or folder to move."); return; }
+
+            var fileName = Path.GetFileName(sourcePath);
+            var defaultNewPath = Path.Combine(currentWorkingPath, fileName);
+            
+            var newPath = PromptForText("Move Item", "Enter new path or name:", defaultNewPath);
+            if (string.IsNullOrEmpty(newPath)) return;
+
+            // Normalize path separators
+            newPath = newPath.Replace("/", "\\");
+
+            // If user entered just a name (no path separators), assume they want it in current working directory
+            if (!newPath.Contains("\\"))
+                newPath = Path.Combine(currentWorkingPath, newPath);
+
+            // Prevent moving to same location
+            if (sourcePath.Equals(newPath, StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show("Source and destination are the same.");
+                return;
+            }
+
+            // Confirm move operation
+            var result = MessageBox.Show(
+                $"Move:\n  From: {sourcePath}\n  To: {newPath}",
+                "Confirm Move",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.OK)
+            {
+                FileSystemUtils.Rename(sourcePath, newPath);
+                RefreshTree();
+                MessageBox.Show("Item moved successfully.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowFriendlyError(ex, "Failed to move the selected item.");
+        }
+    }
+
     private void RevealInExplorer()
     {
         try
@@ -596,6 +653,7 @@ public class MainForm : Form
             ShowFriendlyError(ex, "Failed to reveal the selected item in Explorer.");
         }
     }
+
     private string? PromptForText(string title, string label, string defaultValue)
     {
         using (var form = new Form() { Width = 520, Height = 150, Text = title, StartPosition = FormStartPosition.CenterParent })
@@ -604,7 +662,7 @@ public class MainForm : Form
             var txt = new TextBox() { Left = 8, Top = 30, Width = 480, Text = defaultValue ?? "" };
             var ok = new Button() { Text = "OK", Left = 320, Width = 75, Top = 64, DialogResult = DialogResult.OK };
             var cancel = new Button() { Text = "Cancel", Left = 405, Width = 75, Top = 64, DialogResult = DialogResult.Cancel };
-            form.Controls.AddRange(new Control[] { lbl, txt, ok, cancel });
+            form.Controls.AddRange([ lbl, txt, ok, cancel ]);
             form.AcceptButton = ok;
             form.CancelButton = cancel;
             if (form.ShowDialog(this) == DialogResult.OK)
